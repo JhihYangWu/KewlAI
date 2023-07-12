@@ -45,6 +45,19 @@ def main():
     for i in range(N_ITERS):
         rand_i = np.random.randint(images.shape[0])
         improve_model(model, images[rand_i], poses[rand_i], focal_len, optimizer)
+        # Show image rendered from test_pose every 25 iterations.
+        if i % 25 == 0:
+            H, W = test_img.shape[:2]
+            world_coord_d, world_coord_o = get_rays(H, W, focal_len, test_pose)
+            pred_img = render_img(model, world_coord_d, world_coord_o, z_near=2, z_far=6)
+            pred_img = pred_img.detach().numpy()
+            loss = np.mean(np.square(pred_img - test_img))
+            print("Testing loss:", loss)
+            # Compute peak signal-to-noise ratio.
+            psnr = -10 * np.log(loss) / np.log(10)
+            plt.title(f"ITER: {i} | PSNR: {psnr}")
+            plt.imshow(pred_img)
+            plt.pause(0.1)
 
 def load_data():
     """Load data for training."""
