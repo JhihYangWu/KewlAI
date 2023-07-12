@@ -28,13 +28,22 @@ def main():
     images, poses, focal_len, test_img, test_pose = load_data()
     model = MLP()
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    debug_loss(model, images[0], poses[0], focal_len, optimizer)  # Make sure loss is decreasing.
+    for i in range(N_ITERS):
+        rand_i = np.random.randint(images.shape[0])
+        improve_model(model, images[rand_i], poses[rand_i], focal_len, optimizer)
+        # Show image rendered from test_pose every 25 iterations.
+        if i % 25 == 0:
+            evaluate(model, test_img, test_pose, focal_len, i)
+    plt.show()
 
-    # First try one image for 3 iterations to make sure loss can decrease.
-    debug_losses = np.zeros(3)
+def debug_loss(model, img, pose, focal_len, optimizer):
+    """Make sure loss can decrease by training for 3 iterations."""
+    losses = np.zeros(3)
     for i in range(3):
-        loss = improve_model(model, images[0], poses[0], focal_len, optimizer)
-        debug_losses[i] = loss
-    not_improving = np.all(debug_losses == debug_losses[0])
+        loss = improve_model(model, img, pose, focal_len, optimizer)
+        losses[i] = loss
+    not_improving = np.all(losses == losses[0])
     if not_improving:
         print("Loss is not decreasing. Please rerun script.")
         import sys
@@ -42,22 +51,19 @@ def main():
     else:
         print("Loss decreasing. Starting to use random images.")
 
-    for i in range(N_ITERS):
-        rand_i = np.random.randint(images.shape[0])
-        improve_model(model, images[rand_i], poses[rand_i], focal_len, optimizer)
-        # Show image rendered from test_pose every 25 iterations.
-        if i % 25 == 0:
-            H, W = test_img.shape[:2]
-            world_coord_d, world_coord_o = get_rays(H, W, focal_len, test_pose)
-            pred_img = render_img(model, world_coord_d, world_coord_o, z_near=2, z_far=6)
-            pred_img = pred_img.detach().numpy()
-            loss = np.mean(np.square(pred_img - test_img))
-            print("Testing loss:", loss)
-            # Compute peak signal-to-noise ratio.
-            psnr = -10 * np.log(loss) / np.log(10)
-            plt.title(f"ITER: {i} | PSNR: {psnr}")
-            plt.imshow(pred_img)
-            plt.pause(0.1)
+def evaluate(model, true_img, test_pose, focal_len, iter):
+    """See how well model performs on a unseen pose."""
+    H, W = true_img.shape[:2]
+    world_coord_d, world_coord_o = get_rays(H, W, focal_len, test_pose)
+    pred_img = render_img(model, world_coord_d, world_coord_o,
+                          z_near=2, z_far=6)
+    pred_img = pred_img.detach().numpy()
+    loss = np.mean(np.square(pred_img - true_img))
+    print("Testing loss:", loss)
+    psnr = -10 * np.log(loss) / np.log(10)  # Peak signal-to-noise ratio.
+    plt.title(f"ITER: {iter} | PSNR: {psnr}")
+    plt.imshow(pred_img)
+    plt.pause(0.1)
 
 def load_data():
     """Load data for training."""
@@ -121,6 +127,7 @@ def improve_model(model, img, pose, focal_len, optimizer):
 
     # Print stats.
     print("Training loss:", loss.item())
+
     return loss.item()
 
 def get_rays(H, W, focal_len, pose):
@@ -175,6 +182,7 @@ def render_img(model, world_coord_d, world_coord_o, z_near, z_far):
     weights = alpha * torch.cumprod(1 - alpha + 1e-10, dim=-1)
 
     rgb_map = torch.sum(weights[..., None] * rgb, dim=-2)
+    _ = rgb_map.mean()  # Hack found to prevent loss from not decreasing.
     return rgb_map
 
 def add_fourier(x):
