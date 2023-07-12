@@ -35,6 +35,8 @@ def main():
         # Show image rendered from test_pose every 25 iterations.
         if i % 25 == 0:
             evaluate(model, test_img, test_pose, focal_len, i)
+            print("Saving model.")
+            save_model(model)
     plt.show()
 
 def debug_loss(model, img, pose, focal_len, optimizer):
@@ -64,6 +66,9 @@ def evaluate(model, true_img, test_pose, focal_len, iter):
     plt.title(f"ITER: {iter} | PSNR: {psnr}")
     plt.imshow(pred_img)
     plt.pause(0.1)
+
+def save_model(model):
+    torch.save(model.state_dict(), "model.pt")
 
 def load_data():
     """Load data for training."""
