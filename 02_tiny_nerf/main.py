@@ -12,8 +12,21 @@ Download tiny_nerf_data.npz from http://cseweb.ucsd.edu/~viscomp/projects/LF/pap
 python3 main.py
 """
 
+import numpy as np
+import matplotlib.pyplot as plt
+
 def main():
-    pass
+    images, poses, focal_len, test_img, test_pose = load_data()
+
+def load_data():
+    """Load data for training."""
+    data = np.load("tiny_nerf_data.npz")
+    images = data["images"]  # A bunch of 100x100 RGB images of target object.
+    poses = data["poses"]  # A bunch of 4x4 camera-to-world transformation matrices.
+    focal_len = data["focal"]
+    test_img, test_pose = images[101], poses[101]
+    images, poses = images[:100], poses[:100]
+    return images, poses, focal_len, test_img, test_pose
 
 if __name__ == "__main__":
     main()
