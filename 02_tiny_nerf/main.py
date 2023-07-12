@@ -17,6 +17,7 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import os
 
 L_EMBED = 6  # Number of fourier features to encode xyz with.
 N_SAMPLES = 64  # Number of distances to sample per ray.
@@ -28,16 +29,19 @@ def main():
     images, poses, focal_len, test_img, test_pose = load_data()
     model = MLP()
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
-    debug_loss(model, images[0], poses[0], focal_len, optimizer)  # Make sure loss is decreasing.
-    for i in range(N_ITERS):
-        rand_i = np.random.randint(images.shape[0])
-        improve_model(model, images[rand_i], poses[rand_i], focal_len, optimizer)
-        # Show image rendered from test_pose every 25 iterations.
-        if i % 25 == 0:
-            evaluate(model, test_img, test_pose, focal_len, i)
-            print("Saving model.")
-            save_model(model)
-    plt.show()
+    if not os.path.exists("model.pt"):
+        debug_loss(model, images[0], poses[0], focal_len, optimizer)  # Make sure loss is decreasing.
+        for i in range(N_ITERS):
+            rand_i = np.random.randint(images.shape[0])
+            improve_model(model, images[rand_i], poses[rand_i], focal_len, optimizer)
+            # Show image rendered from test_pose every 25 iterations.
+            if i % 25 == 0:
+                evaluate(model, test_img, test_pose, focal_len, i)
+                print("Saving model.")
+                save_model(model)
+        plt.show()
+    else:
+        print("Found trained model. If you would like to train again, delete or rename model.pt.")
 
 def debug_loss(model, img, pose, focal_len, optimizer):
     """Make sure loss can decrease by training for 3 iterations."""
