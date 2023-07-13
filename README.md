@@ -15,3 +15,12 @@ Style image path: example_style_image.png
 Percent of style to transfer into content image (float between 0.0 and 1.0
 exclusive, choose 0.5 as default): 0.5
 ```
+
+---
+## 02 Tiny NeRF
+![02_tiny_nerf](/imgs/tiny_nerf.png)
+```sh
+cd 02_tiny_nerf
+Download tiny_nerf_data.npz from http://cseweb.ucsd.edu/~viscomp/projects/LF/papers/ECCV20/nerf/tiny_nerf_data.npz
+python3 main.py
+```
