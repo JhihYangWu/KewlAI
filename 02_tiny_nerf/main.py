@@ -14,6 +14,7 @@ python3 main.py
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.widgets import Slider
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -42,6 +43,95 @@ def main():
         plt.show()
     else:
         print("Found trained model. If you would like to train again, delete or rename model.pt.")
+        model = load_model()
+        fig, ax = plt.subplots()
+        fig.subplots_adjust(bottom=0.25)
+        axtheta = fig.add_axes([0.1, 0.05, 0.8, 0.05])
+        axphi = fig.add_axes([0.1, 0.10, 0.8, 0.05])
+        axradius = fig.add_axes([0.1, 0.15, 0.8, 0.05])
+        theta_slider = Slider(
+            ax=axtheta,
+            label="Theta",
+            valmin=0,
+            valmax=360,
+            valinit=100
+        )
+        phi_slider = Slider(
+            ax=axphi,
+            label="Phi",
+            valmin=-90,
+            valmax=0,
+            valinit=-30
+        )
+        radius_slider = Slider(
+            ax=axradius,
+            label="Radius",
+            valmin=3,
+            valmax=5,
+            valinit=4
+        )
+        def update_render(val):
+            theta = theta_slider.val
+            phi = phi_slider.val
+            radius = radius_slider.val
+            pred_img = render_interactive(model, focal_len, theta, phi, radius)
+            ax.imshow(pred_img)
+        theta_slider.on_changed(update_render)
+        phi_slider.on_changed(update_render)
+        radius_slider.on_changed(update_render)
+        update_render(-1)
+        plt.show()
+
+def load_model():
+    """Load pretrained model."""
+    model = MLP()
+    model.load_state_dict(torch.load("model.pt"))
+    model.eval()
+    return model
+
+def render_interactive(model, focal_len, theta, phi, radius):
+    """Render a image using model interactively."""
+    pose = create_pose_matrix(theta, phi, radius)
+    H, W = 100, 100
+    world_coord_d, world_coord_o = get_rays(H, W, focal_len, pose)
+    pred_img = render_img(model, world_coord_d, world_coord_o,
+                          z_near=2, z_far=6)
+    pred_img = pred_img.detach().numpy()
+    return pred_img
+
+def create_pose_matrix(theta, phi, radius):
+    """Create pose matrix given parameters."""
+    # I have no idea of the math behind this. I just copied from tiny_nerf.ipynb.
+    def trans_t(t):
+        return np.array([
+            [1, 0, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, 1, t],
+            [0, 0, 0, 1]
+        ])
+    def rot_phi(phi):
+        return np.array([
+            [1, 0, 0, 0],
+            [0, np.cos(phi), -np.sin(phi), 0],
+            [0, np.sin(phi), np.cos(phi), 0],
+            [0, 0, 0, 1]
+        ])  # Looks like 2D rotation matrix!
+    def rot_theta(th):
+        return np.array([
+            [np.cos(th), 0, -np.sin(th), 0],
+            [0, 1, 0, 0],
+            [np.sin(th), 0, np.cos(th), 0],
+            [0, 0, 0, 1]
+        ])  # Looks like 2D rotation matrix!
+    c2w = trans_t(radius)
+    c2w = rot_phi(phi/180*np.pi) @ c2w
+    c2w = rot_theta(theta/180*np.pi) @ c2w
+    c2w = np.array([
+        [-1, 0, 0, 0],
+        [ 0, 0, 1, 0],
+        [ 0, 1, 0, 0],
+        [ 0, 0, 0, 1]]) @ c2w
+    return torch.tensor(c2w, dtype=torch.float32)
 
 def debug_loss(model, img, pose, focal_len, optimizer):
     """Make sure loss can decrease by training for 3 iterations."""
@@ -72,6 +162,7 @@ def evaluate(model, true_img, test_pose, focal_len, iter):
     plt.pause(0.1)
 
 def save_model(model):
+    """Save model weights."""
     torch.save(model.state_dict(), "model.pt")
 
 def load_data():
