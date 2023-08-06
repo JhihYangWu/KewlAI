@@ -20,6 +20,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 import os
 
+if torch.cuda.is_available():
+    device = "cuda"
+else:
+    device = "cpu"
+print(f"Torch device: {device}")
+
 L_EMBED = 6  # Number of fourier features to encode xyz with.
 N_SAMPLES = 64  # Number of distances to sample per ray.
 N_ITERS = 1000
@@ -96,7 +102,7 @@ def render_interactive(model, focal_len, theta, phi, radius):
     world_coord_d, world_coord_o = get_rays(H, W, focal_len, pose)
     pred_img = render_img(model, world_coord_d, world_coord_o,
                           z_near=2, z_far=6)
-    pred_img = pred_img.detach().numpy()
+    pred_img = pred_img.cpu().detach().numpy()
     return pred_img
 
 def create_pose_matrix(theta, phi, radius):
@@ -178,15 +184,15 @@ def load_data():
 class MLP(nn.Module):
     def __init__(self):
         super().__init__()
-        self.fc1 = nn.Linear(3 + 3*2*L_EMBED, 256)
-        self.fc2 = nn.Linear(256, 256)
-        self.fc3 = nn.Linear(256, 256)
-        self.fc4 = nn.Linear(256, 256)
-        self.fc5 = nn.Linear(256 + self.fc1.in_features, 256)  # For skip connection.
-        self.fc6 = nn.Linear(256, 256)
-        self.fc7 = nn.Linear(256, 256)
-        self.fc8 = nn.Linear(256, 256)
-        self.fc9 = nn.Linear(256, 4)
+        self.fc1 = nn.Linear(3 + 3*2*L_EMBED, 256, device=device)
+        self.fc2 = nn.Linear(256, 256, device=device)
+        self.fc3 = nn.Linear(256, 256, device=device)
+        self.fc4 = nn.Linear(256, 256, device=device)
+        self.fc5 = nn.Linear(256 + self.fc1.in_features, 256, device=device)  # For skip connection.
+        self.fc6 = nn.Linear(256, 256, device=device)
+        self.fc7 = nn.Linear(256, 256, device=device)
+        self.fc8 = nn.Linear(256, 256, device=device)
+        self.fc9 = nn.Linear(256, 4, device=device)
 
     def forward(self, x):
         orig_input = x
@@ -217,7 +223,7 @@ def improve_model(model, img, pose, focal_len, optimizer):
     pred_img = render_img(model, world_coord_d, world_coord_o, z_near=2, z_far=6)
     
     # Calculate loss.
-    img_tensor = torch.tensor(img, dtype=torch.float32, requires_grad=False)
+    img_tensor = torch.tensor(img, dtype=torch.float32, requires_grad=False, device=device)
     loss = torch.mean(torch.square(pred_img - img_tensor))
 
     # Update model weights using gradients.
@@ -248,16 +254,16 @@ def get_rays(H, W, focal_len, pose):
     # Multiplying by z will give you x, y, -z in camera coord system.
     rot_matrix = pose[:3, :3]
     world_coord_d = torch.sum(camera_coord[..., None, :] * rot_matrix, dim=-1)
-    offset_vector = torch.tensor(pose[:3, -1], dtype=torch.float32)
+    offset_vector = torch.tensor(pose[:3, -1], dtype=torch.float32, device=device)
     world_coord_o = torch.broadcast_to(offset_vector, world_coord_d.shape)
     # world_coord_d and world_coord_o are separated for now because we need to
     # multiply world_coord_d with z independently later.
-    return world_coord_d, world_coord_o
+    return world_coord_d.to(device), world_coord_o
 
 def render_img(model, world_coord_d, world_coord_o, z_near, z_far):
     """Render a image using model."""
     # Create 3D query points.
-    z_vals = torch.linspace(z_near, z_far, N_SAMPLES)
+    z_vals = torch.linspace(z_near, z_far, N_SAMPLES, device=device)
     pts = (world_coord_d[..., None, :] * z_vals[:, None] +
            world_coord_o[..., None, :])
 
@@ -276,7 +282,7 @@ def render_img(model, world_coord_d, world_coord_o, z_near, z_far):
 
     # Do volume rendering.
     dists_btwn = torch.cat([z_vals[1:] - z_vals[:-1],
-                            torch.tensor([1e10], dtype=torch.float32)])
+                            torch.tensor([1e10], dtype=torch.float32, device=device)])
     alpha = 1 - torch.exp(-sigma * dists_btwn)
     # alpha will be close to 1 if density/sigma is large and close to 0 otherwise.
     weights = alpha * torch.cumprod(1 - alpha + 1e-10, dim=-1)
