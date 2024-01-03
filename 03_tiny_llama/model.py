@@ -14,7 +14,7 @@ class Config:
     dim: int = 512  # what len vector to represent each token with
     n_layers: int = 8
     norm_eps: float = 1e-5  # epsilon used in RMSNorm
-    context_length: int = 512
+    context_length: int = 256
     n_heads: int = 4  # multi-head attention
 
 class TinyLlama(nn.Module):
