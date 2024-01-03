@@ -4,3 +4,4 @@ experimenting.ipynb
 *.swp
 tiny_nerf_data.npz
 __pycache__/
+archive/
