@@ -42,10 +42,12 @@ class TinyLlama(nn.Module):
     def train(self):
         # sets TinyLlama in train mode
         self.mode = "train"
+        return super().train()
 
     def eval(self):
         # sets TinyLlama in eval/inference mode
         self.mode = "eval"
+        return super().eval()
 
     def forward(self, token_ids: torch.Tensor, start_pos: int) -> torch.Tensor:
         assert self.mode == "train" or self.mode == "eval"
@@ -61,6 +63,7 @@ class TinyLlama(nn.Module):
             # Andrej Karpathy explains it well in https://www.youtube.com/watch?v=kCc8FmEb1nY
             mask = torch.full((seq_len, seq_len), float("-inf"))
             mask = torch.triu(mask, diagonal=1)
+            mask = torch.nan_to_num(mask)  # need this line on apple silicon
 
         for layer_num in range(self.config.n_layers):
             h = self.layer(h, start_pos, freqs_cis, mask, layer_num)
@@ -72,19 +75,17 @@ class TinyLlama(nn.Module):
         orig_dtype = x.dtype
         x = x.float()
         x = x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.config.norm_eps)
-        x = (x * weight).type_as(orig_dtype)
+        x = (x * weight).type(orig_dtype)
         return x
 
     def precompute_freqs_cis(self) -> torch.Tensor:
-        dim = self.config.dim
+        dim = self.config.dim // self.config.n_heads
         end = self.config.context_length
         theta = 10000.0  # from paper
-        # copied directly from https://github.com/facebookresearch/llama/blob/main/llama/model.py
-        freqs = 1.0 / (theta ** (torch.arange(0, dim, 2)[: (dim // 2)].float() / dim))
-        t = torch.arange(end, device=freqs.device)  # type: ignore
-        freqs = torch.outer(t, freqs).float()  # type: ignore
-        freqs_cis = torch.polar(torch.ones_like(freqs), freqs)  # complex64
-        return freqs_cis
+        # copied from https://github.com/tinygrad/tinygrad/blob/master/extra/models/llama.py
+        freqs = 1.0 / (theta ** (torch.arange(0, dim, 2)[:(dim // 2)] / dim))
+        freqs = torch.arange(end).unsqueeze(dim=1)*freqs.unsqueeze(dim=0)
+        return torch.stack([torch.cos(freqs), torch.sin(freqs)], dim=-1).reshape(1, end, 1, dim//2, 2)
     
     def layer(self, x: torch.Tensor, start_pos: int, freqs_cis: torch.Tensor, mask: Optional[torch.Tensor], layer_num: int) -> torch.Tensor:
         # first half of block
@@ -106,7 +107,7 @@ class TinyLlama(nn.Module):
         xv = xv.view(batch_size, seq_len, self.config.n_heads, head_dim)
         xq, xk = self.apply_rotary_emb(xq, xk, freqs_cis)
         # kv cache
-        if self.mode == "inference":
+        if self.mode == "eval":
             self.cache_k[:1, start_pos: start_pos + seq_len] = xk
             self.cache_v[:1, start_pos: start_pos + seq_len] = xv
             keys = self.cache_k[:1, :start_pos + seq_len]
@@ -132,18 +133,16 @@ class TinyLlama(nn.Module):
         return down(F.silu(gate(x)) * up(x))
 
     def apply_rotary_emb(self, xq: torch.Tensor, xk: torch.Tensor, freqs_cis: torch.Tensor) -> torch.Tensor:
-        # copied directly from https://github.com/facebookresearch/llama/blob/main/llama/model.py
-        xq_ = torch.view_as_complex(xq.float().reshape(*xq.shape[:-1], -1, 2))
-        xk_ = torch.view_as_complex(xk.float().reshape(*xk.shape[:-1], -1, 2))
-        freqs_cis = self.reshape_for_broadcast(freqs_cis, xq_)
-        xq_out = torch.view_as_real(xq_ * freqs_cis).flatten(3)
-        xk_out = torch.view_as_real(xk_ * freqs_cis).flatten(3)
-        return xq_out.type_as(xq), xk_out.type_as(xk)
-    
-    def reshape_for_broadcast(self, freqs_cis: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
-        # copied directly from https://github.com/facebookresearch/llama/blob/main/llama/model.py
-        ndim = x.ndim
-        assert 0 <= 1 < ndim
-        assert freqs_cis.shape == (x.shape[1], x.shape[-1])
-        shape = [d if i == 1 or i == ndim - 1 else 1 for i, d in enumerate(x.shape)]
-        return freqs_cis.view(*shape)
+        # copied from https://github.com/tinygrad/tinygrad/blob/master/extra/models/llama.py
+        def complex_mult(A, c, d):
+            a,b = A[..., 0:1], A[..., 1:2]
+            ro = a*c - b*d
+            co = a*d + b*c
+            return torch.cat((ro, co), dim=-1)
+        assert freqs_cis.shape[1] == xq.shape[1] == xk.shape[1], f"freqs_cis shape mismatch {freqs_cis.shape} xq:{xq.shape} xk:{xk.shape}"
+        xq = xq.reshape(*xq.shape[0:-1], -1, 2)
+        xk = xk.reshape(*xk.shape[0:-1], -1, 2)
+        c, d = freqs_cis[..., 0:1], freqs_cis[..., 1:2]
+        xq_out = complex_mult(xq, c, d)
+        xk_out = complex_mult(xk, c, d)
+        return xq_out.flatten(3), xk_out.flatten(3)
