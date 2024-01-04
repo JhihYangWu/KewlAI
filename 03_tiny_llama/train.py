@@ -78,16 +78,16 @@ def tokenize_train_text(train_text: List[str], tokenizer: Tokenizer, config: Con
 def train(model: TinyLlama, train_ids: List[List[int]], val_ids: List[List[int]], device: str):
     model.train()
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
-    loss_func = nn.CrossEntropyLoss(ignore_index=0)  # ignore_index=0: padding tokens shouldn't contribute to loss
     best_val_loss = 10000
     for epoch_num in range(NUM_EPOCHS):
         for step in (tqdm_t := trange(0, len(train_ids), BATCH_SIZE)):
             token_ids = train_ids[step:step + BATCH_SIZE]
             token_ids = torch.Tensor(token_ids).int().to(device)
             logits = model.forward(token_ids, 0)
-            preds = F.softmax(logits, dim=-1)
-            labels = torch.cat((token_ids[:, 1:], torch.zeros(token_ids.shape[0], 1).int()), dim=1)  # labels is just token_ids shifted in time by one unit
-            loss = loss_func(preds.view(-1, model.config.vocab_size), labels.view(-1).long())
+            preds = F.softmax(logits, dim=-1)  # (batch_size, seq_len, vocab_size)
+            labels = torch.cat((token_ids[:, 1:], torch.zeros(token_ids.shape[0], 1).int()), dim=1)  # (batch_size, seq_len) labels is just token_ids shifted in time by one unit
+            b, i = torch.where(labels)
+            loss = -preds[b, i, labels[b, i]].log2().mean()
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -102,7 +102,8 @@ def train(model: TinyLlama, train_ids: List[List[int]], val_ids: List[List[int]]
                         logits = model.forward(token_ids, 0)
                         preds = F.softmax(logits, dim=-1)
                         labels = torch.cat((token_ids[:, 1:], torch.zeros(token_ids.shape[0], 1).int()), dim=1)
-                        loss = loss_func(preds.view(-1, model.config.vocab_size), labels.view(-1).long())
+                        b, i = torch.where(labels)
+                        loss = -preds[b, i, labels[b, i]].log2().mean()
                         sum_val_loss += loss.item()
                         num_val_loss += 1
                     val_loss = sum_val_loss / num_val_loss
