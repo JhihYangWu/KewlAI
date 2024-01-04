@@ -96,7 +96,7 @@ def train(model: TinyLlama, train_ids: List[List[int]], val_ids: List[List[int]]
                 with torch.no_grad():
                     sum_val_loss = 0
                     num_val_loss = 0
-                    for val_step in range(0, len(val_ids), BATCH_SIZE):
+                    for val_step in tqdm(range(0, len(val_ids), BATCH_SIZE)):
                         token_ids = val_ids[val_step:val_step + BATCH_SIZE]
                         token_ids = torch.Tensor(token_ids).int().to(device)
                         logits = model.forward(token_ids, 0)
