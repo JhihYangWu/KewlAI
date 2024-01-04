@@ -53,7 +53,7 @@ class TinyLlama(nn.Module):
         assert self.mode == "train" or self.mode == "eval"
         batch_size, seq_len = token_ids.shape
         h = self.token_embeddings(token_ids)
-        freqs_cis = self.freqs_cis[start_pos: start_pos + seq_len]
+        freqs_cis = self.freqs_cis[:, start_pos: start_pos + seq_len]
 
         if self.mode == "eval":
             assert seq_len == 1, "only one token id at a time in inference mode"
