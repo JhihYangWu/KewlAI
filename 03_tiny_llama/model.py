@@ -10,11 +10,11 @@ import math
 
 @dataclass
 class Config:
-    vocab_size: int = 256
-    dim: int = 512  # what len vector to represent each token with
-    n_layers: int = 8
+    vocab_size: int = 1000
+    dim: int = 256  # what len vector to represent each token with
+    n_layers: int = 4
     norm_eps: float = 1e-5  # epsilon used in RMSNorm
-    context_length: int = 256
+    context_length: int = 128
     n_heads: int = 4  # multi-head attention
 
 class TinyLlama(nn.Module):
@@ -36,18 +36,8 @@ class TinyLlama(nn.Module):
             setattr(self, f"layer_{i}_mlp_down", nn.Linear(int(config.dim * 2.5), config.dim, bias=False))
             setattr(self, f"layer_{i}_input_norm", nn.Parameter(torch.ones(config.dim)))
             setattr(self, f"layer_{i}_post_attn_norm", nn.Parameter(torch.ones(config.dim)))
-        self.cache_k = torch.zeros((1, config.context_length, config.n_heads, config.dim // config.n_heads))
-        self.cache_v = torch.zeros((1, config.context_length, config.n_heads, config.dim // config.n_heads))
-
-    def train(self):
-        # sets TinyLlama in train mode
-        self.mode = "train"
-        return super().train()
-
-    def eval(self):
-        # sets TinyLlama in eval/inference mode
-        self.mode = "eval"
-        return super().eval()
+        self.cache_k = torch.zeros((config.n_layers, 1, config.context_length, config.n_heads, config.dim // config.n_heads))
+        self.cache_v = torch.zeros((config.n_layers, 1, config.context_length, config.n_heads, config.dim // config.n_heads))
 
     def forward(self, token_ids: torch.Tensor, start_pos: int) -> torch.Tensor:
         assert self.mode == "train" or self.mode == "eval"
@@ -108,10 +98,10 @@ class TinyLlama(nn.Module):
         xq, xk = self.apply_rotary_emb(xq, xk, freqs_cis)
         # kv cache
         if self.mode == "eval":
-            self.cache_k[:1, start_pos: start_pos + seq_len] = xk
-            self.cache_v[:1, start_pos: start_pos + seq_len] = xv
-            keys = self.cache_k[:1, :start_pos + seq_len]
-            values = self.cache_v[:1, :start_pos + seq_len]
+            self.cache_k[layer_num, :1, start_pos: start_pos + seq_len] = xk
+            self.cache_v[layer_num, :1, start_pos: start_pos + seq_len] = xv
+            keys = self.cache_k[layer_num, :1, :start_pos + seq_len]
+            values = self.cache_v[layer_num, :1, :start_pos + seq_len]
         else:
             keys = xk
             values = xv

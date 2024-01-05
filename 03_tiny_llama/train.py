@@ -11,9 +11,9 @@ from tokenizers import Tokenizer, models, trainers, pre_tokenizers
 from tqdm import tqdm, trange
 import random
 
-BATCH_SIZE = 32
+BATCH_SIZE = 512
 LEARNING_RATE = 3e-4
-NUM_EPOCHS = 100000
+NUM_EPOCHS = 1_000_000_000
 VAL_EXAMPLES = 5000  # how many comments to leave for validation
 VAL_FREQ = 500  # how many batches to fit before validating
 
@@ -76,7 +76,7 @@ def tokenize_train_text(train_text: List[str], tokenizer: Tokenizer, config: Con
     return train_ids
 
 def train(model: TinyLlama, train_ids: List[List[int]], val_ids: List[List[int]], device: str):
-    model.train()
+    model.mode = "train"
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
     best_val_loss = 10000
     for epoch_num in range(NUM_EPOCHS):
@@ -86,6 +86,7 @@ def train(model: TinyLlama, train_ids: List[List[int]], val_ids: List[List[int]]
             logits = model.forward(token_ids, 0)
             preds = F.softmax(logits, dim=-1)  # (batch_size, seq_len, vocab_size)
             labels = torch.cat((token_ids[:, 1:], torch.zeros(token_ids.shape[0], 1).int()), dim=1)  # (batch_size, seq_len) labels is just token_ids shifted in time by one unit
+            labels[:, :1] = 0  # [BOS] -> predict next token is too hard task, don't count in loss
             b, i = torch.where(labels)
             loss = -preds[b, i, labels[b, i]].log2().mean()
             optimizer.zero_grad()
@@ -102,6 +103,7 @@ def train(model: TinyLlama, train_ids: List[List[int]], val_ids: List[List[int]]
                         logits = model.forward(token_ids, 0)
                         preds = F.softmax(logits, dim=-1)
                         labels = torch.cat((token_ids[:, 1:], torch.zeros(token_ids.shape[0], 1).int()), dim=1)
+                        labels[:, :1] = 0  # [BOS] -> predict next token is too hard task, don't count in loss
                         b, i = torch.where(labels)
                         loss = -preds[b, i, labels[b, i]].log2().mean()
                         sum_val_loss += loss.item()
@@ -112,6 +114,8 @@ def train(model: TinyLlama, train_ids: List[List[int]], val_ids: List[List[int]]
                         best_val_loss = val_loss
                         torch.save(model, "WallStreetBets_model.pt")
                         print("Model saved!")
+        torch.save(model, "WallStreetBets_model_overfit.pt")
+        print("Overfit model saved!")
 
 if __name__ == "__main__":
     main()
