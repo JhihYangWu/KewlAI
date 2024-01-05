@@ -24,3 +24,11 @@ cd 02_tiny_nerf
 Download tiny_nerf_data.npz from http://cseweb.ucsd.edu/~viscomp/projects/LF/papers/ECCV20/nerf/tiny_nerf_data.npz
 python3 main.py
 ```
+
+---
+## 03 Tiny Llama
+![03_tiny_llama](/imgs/tiny_llama.gif)
+```sh
+cd 03_tiny_llama
+python3 inference.py
+```
