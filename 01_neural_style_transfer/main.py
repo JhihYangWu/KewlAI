@@ -1,11 +1,9 @@
 """Script for demonstrating Neural Style Transfer.
 
-First and foremost, I did not invent the neural style transfer algorithm. This
-script is just a implementation and demo of it. The code is highly inspired by
-the Art Generation with Neural Style Transfer programming assignment in the
-Deep Learning Specialization course on Coursera. This implementation basically
-follows what Andrew Ng taught in the course so if anything doesn't make sense
-then you know where to look first.
+The code is highly inspired by the Art Generation with Neural Style Transfer
+programming assignment in the Deep Learning Specialization course on Coursera.
+This implementation basically follows what Andrew Ng taught in the course so
+if anything doesn't make sense then you know where to look first.
 
 Example usage:
 python3 main.py
