@@ -5,3 +5,4 @@ experimenting.ipynb
 tiny_nerf_data.npz
 __pycache__/
 archive/
+04_nerfies/input_video/
