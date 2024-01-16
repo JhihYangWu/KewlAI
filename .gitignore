@@ -6,3 +6,4 @@ tiny_nerf_data.npz
 __pycache__/
 archive/
 04_nerfies/input_video/
+04_nerfies/jhihyang_nerfie/
