@@ -1,0 +1,7 @@
+.DS_Store
+experimenting.ipynb
+.ipynb_checkpoints/
+*.swp
+tiny_nerf_data.npz
+__pycache__/
+archive/
