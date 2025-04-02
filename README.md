@@ -32,3 +32,7 @@ python3 main.py
 cd 03_tiny_llama
 python3 inference.py
 ```
+
+---
+## 04 GeNVS
+![04_genvs](/imgs/genvs.png)
