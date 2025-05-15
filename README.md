@@ -5,6 +5,14 @@ Cool deep learning algorithms from scratch.
 If you have questions about anything, feel free to ask me by submitting an issue or through email.
 
 ---
+## 05 Lunar Lander DQL
+![05_lunar_lander_dql](/imgs/lunar_lander_dql.gif)
+```sh
+cd 05_lunar_lander_dql
+python3 train.py
+```
+
+---
 ## 04 GeNVS
 ![04_genvs](/imgs/genvs.png)
 
