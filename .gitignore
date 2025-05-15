@@ -5,3 +5,4 @@ experimenting.ipynb
 tiny_nerf_data.npz
 __pycache__/
 archive/
+05_lunar_lander_dql/logs/
