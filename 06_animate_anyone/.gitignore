@@ -1,0 +1,40 @@
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log
+
+# Compiled source code
+*.class
+*.dll
+*.exe
+*.o
+*.so
+
+# Build directories
+build/
+dist/
+
+# Environment files
+.env
+
+# IDE and Editor directories/files
+.idea/
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+__pycache__/
+
+*.png
+*.jpg
+training_runs/
+wandb/
+*.mp4
