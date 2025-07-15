@@ -5,6 +5,10 @@ Cool deep learning algorithms from scratch.
 If you have questions about anything, feel free to ask me by submitting an issue or through email.
 
 ---
+## 06 Animate Anyone
+![06_animate_anyone](/imgs/animate_anyone.gif)
+
+---
 ## 05 Lunar Lander DQL
 ![05_lunar_lander_dql](/imgs/lunar_lander_dql.gif)
 ```sh
@@ -14,7 +18,7 @@ python3 train.py
 
 ---
 ## 04 GeNVS
-![04_genvs](/imgs/genvs.png)
+![04_genvs](/imgs/genvs.gif)
 
 ---
 ## 03 Tiny Llama
