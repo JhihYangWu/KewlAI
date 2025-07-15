@@ -4,7 +4,7 @@
 
 ## Disclaimer
 My implementation is actually quite inefficient. I can only do training on 4 frames at once on a 48 GB card.  
-My implementation deviates from the original implementation described by the paper.
+My implementation deviates from the original implementation described by the paper and I have much less compute so the results are not as good.  
 
 ## Acknowledgements
 - Re-implementation of https://humanaigc.github.io/animate-anyone/
