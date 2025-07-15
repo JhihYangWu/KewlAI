@@ -62,4 +62,4 @@ source ./inference_second_phase.sh
 ```
 
 ## Trained Weights
-You can download the weights that I trained for ~2 weeks (~1 week per phase) on a single Nvidia L40S here.
+You can download the weights that I trained for ~2 weeks (~1 week per phase) on a single Nvidia L40S [here](https://www.kaggle.com/datasets/jhihyang/myanimateanyone).
