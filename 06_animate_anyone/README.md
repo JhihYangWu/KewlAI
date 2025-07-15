@@ -1,5 +1,7 @@
 # My Unofficial Implementation of AnimateAnyone
 
+![Teaser](./teaser.gif)
+
 ## Disclaimer
 My implementation is actually quite inefficient. I can only do training on 4 frames at once on a 48 GB card.  
 My implementation deviates from the original implementation described by the paper.
